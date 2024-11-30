@@ -1,0 +1,165 @@
+
+spring:
+  application:
+    name: gateway
+  security:
+    oauth2:
+      client:
+        provider:
+          devops:
+            issuer-uri: http://localhost:8080
+        registration:
+          devops:
+            provider: devops
+            client-id: devops
+            client-secret: Qwerty@2024
+            authorization-grant-type:
+              - authorization_code
+            scope: openid, profile
+            redirect-uri: http://localhost:8081/login/oauth2/code/devops
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin Access-Control-Request-Headers
+        - SaveSession
+      routes:
+        - id: identity
+          uri: http://localhost:8080
+          predicates:
+            - Path=/oauth2/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/oauth2/(?<segment>.*),/$\{segment}
+        - id: webapp-bff
+          uri: http://localhost:3001
+          predicates:
+            - Path=/**
+
+server:
+  port: 8081
+management:
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+
+
+client-security-matchers: >
+  /login/**,
+  /oauth2/**,
+  /logout/**,
+  /en/**,
+  /auth/**,
+  /error/**,
+  /identity/**
+  
+
+client-permit-matchers: >
+  /login/**,
+  /oauth2/**,
+  /en/**,
+  /auth/**,
+  /error/**,
+  /identity/**
+  
+  
+
+#spring:
+#  application:
+#    name: gateway
+#  security:
+#    oauth2:
+#      client:
+#        provider:
+#          github:
+#            issuer-uri: https://github.com
+#          gitlab:
+#            issuer-uri: https://gitlab.com
+#          google:
+#            issuer-uri: https://accounts.google.com
+#        registration:
+#          github:
+#            provider: github
+#            client-id: your-github-client-id
+#            client-secret: your-github-client-secret
+#            authorization-grant-type: authorization_code
+#            scope: read:user, user:email
+#            redirect-uri: http://localhost:8081/login/oauth2/code/github
+#          gitlab:
+#            provider: gitlab
+#            client-id: your-gitlab-client-id
+#            client-secret: your-gitlab-client-secret
+#            authorization-grant-type: authorization_code
+#            scope: read_user, openid
+#            redirect-uri: http://localhost:8081/login/oauth2/code/gitlab
+#          google:
+#            provider: google
+#            client-id: your-google-client-id
+#            client-secret: your-google-client-secret
+#            authorization-grant-type: authorization_code
+#            scope: openid, profile, email
+#            redirect-uri: http://localhost:8081/login/oauth2/code/google
+#
+#  cloud:
+#    gateway:
+#      discovery:
+#        locator:
+#          enabled: false
+#          lower-case-service-id: true
+#      default-filters:
+#        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin Access-Control-Request-Headers
+#        - SaveSession
+#      routes:
+#        - id: identity
+#          uri: http://localhost:8080
+#          predicates:
+#            - Path=/oauth2/**
+#          filters:
+#            - TokenRelay=
+#            - RewritePath=/oauth2/(?<segment>.*),/$\{segment}
+#        - id: webapp-bff
+#          uri: http://localhost:3001
+#          predicates:
+#            - Path=/**
+#
+#server:
+#  port: 8081
+#management:
+#  endpoint:
+#    health:
+#      show-details: always
+#    gateway:
+#      enabled: true
+#  endpoints:
+#    web:
+#      exposure:
+#        include: "*"
+#
+#client-security-matchers: >
+#  /login/**,
+#  /oauth2/**,
+#  /logout/**,
+#  /en/**,
+#  /auth/**,
+#  /error/**,
+#  /identity/**
+#
+#client-permit-matchers: >
+#  /login/**,
+#  /oauth2/**,
+#  /en/**,
+#  /auth/**,
+#  /error/**,
+#  /identity/**
+

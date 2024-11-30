@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: config-server
+
+  profiles:
+    active:
+      - vault
+      - git
+
+  cloud:
+    config:
+      server:
+        vault:
+          host: 157.245.153.57
+          port: 8210
+          scheme: http
+          authentication: token
+          token: root
+          kvVersion: 2
+          backend: secret
+          skipSslValidation: true
+
+        git:
+          uri: https://github.com/ruos-sovanra/config.git
+
+server:
+  port: 9090

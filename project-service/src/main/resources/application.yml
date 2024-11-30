@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: project-service
+  config:
+    import: "optional:configserver:"
+
+  cloud:
+    config:
+      uri: http://localhost:9090
+      name: project-service
+server:
+  port: 8087

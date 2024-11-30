@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="FrameworkDetectionExcludesConfiguration">
+    <file type="web" url="file://$PROJECT_DIR$/delivery-service" />
+    <file type="web" url="file://$PROJECT_DIR$/gateway" />
+    <file type="web" url="file://$PROJECT_DIR$/identity" />
+    <file type="web" url="file://$PROJECT_DIR$/infrastructure-service" />
+    <file type="web" url="file://$PROJECT_DIR$/monitoring-service" />
+    <file type="web" url="file://$PROJECT_DIR$/notification-service" />
+    <file type="web" url="file://$PROJECT_DIR$/project-service" />
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="17" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>
