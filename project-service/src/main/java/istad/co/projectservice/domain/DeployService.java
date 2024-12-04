@@ -6,21 +6,22 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "sub_workspace")
+@Table(name = "deploy_service")
 @Getter
 @Setter
 @NoArgsConstructor
-public class SubWorkspace {
-
+public class DeployService {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String uuid;
-    @Column(unique = true,nullable = true)
     private String name;
+    private String gitUrl;
+    private String branch;
+    @Column(unique = true)
+    private String subdomain;
 
     @ManyToOne
     @JoinColumn(name = "workspace_id")
     private Workspace workspace;
-
 }

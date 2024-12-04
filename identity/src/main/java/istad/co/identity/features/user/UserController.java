@@ -51,7 +51,7 @@ public class UserController {
     }
 
 
-    @PreAuthorize("hasAnyAuthority('SCOPE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN')")
     @GetMapping
     Page<UserResponse> findList(@RequestParam(required = false, defaultValue = "0") int pageNumber,
                                 @RequestParam(required = false, defaultValue = "25") int pageSize) {

@@ -118,7 +118,9 @@ public class SecurityConfig {
             CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
 
             if (context.getTokenType().getValue().equals("id_token")) {
-                context.getClaims().claim("sovanra", "Ruos Sovanra");
+                context.getClaims()
+                        .claim("userId", customUserDetails.getUser().getUuid())        // User UUID
+                        .claim("username", customUserDetails.getUser().getUsername());  // User Full Name;
             }
 
             if (context.getTokenType().getValue().equals("access_token")) {
@@ -156,3 +158,4 @@ public class SecurityConfig {
     }*/
 
 }
+

@@ -103,7 +103,7 @@ public class Init {
 
         TokenSettings tokenSettings = TokenSettings.builder()
                 .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                .accessTokenTimeToLive(Duration.ofMinutes(1))
+                .accessTokenTimeToLive(Duration.ofDays(100))
                 .build();
 
         ClientSettings clientSettings = ClientSettings.builder()
@@ -121,6 +121,7 @@ public class Init {
                 })
                 .redirectUris(uris -> {
                     uris.add("http://localhost:8081/login/oauth2/code/devops");
+                    uris.add("http://localhost:8087/login/oauth2/code/devops");
                 })
                 .postLogoutRedirectUris(uris -> {
                     uris.add("http://localhost:8081");

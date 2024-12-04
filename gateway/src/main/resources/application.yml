@@ -31,10 +31,17 @@ spring:
         - id: identity
           uri: http://localhost:8080
           predicates:
-            - Path=/oauth2/**
+            - Path=/identity/**
           filters:
             - TokenRelay=
-            - RewritePath=/oauth2/(?<segment>.*),/$\{segment}
+            - RewritePath=/identity/(?<segment>.*),/$\{segment}
+        - id: project-service
+          uri: http://localhost:8087
+          predicates:
+            - Path=/project/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/project/(?<segment>.*),/$\{segment}
         - id: webapp-bff
           uri: http://localhost:3001
           predicates:
@@ -62,7 +69,8 @@ client-security-matchers: >
   /en/**,
   /auth/**,
   /error/**,
-  /identity/**
+  /identity/**,
+  /project/**
   
 
 client-permit-matchers: >
@@ -71,9 +79,11 @@ client-permit-matchers: >
   /en/**,
   /auth/**,
   /error/**,
-  /identity/**
-  
-  
+  /identity/**,
+  /project/**
+
+
+
 
 #spring:
 #  application:

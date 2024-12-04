@@ -22,8 +22,12 @@ public class SubWorkspaceServiceImpl implements SubWorkspaceService {
 
         SubWorkspace subWorkspace = new SubWorkspace();
 
+        System.out.println(request.workspaceName());
+
         Workspace workspace = workspaceRepository.findByName(request.workspaceName())
                 .orElseThrow(() -> new NoSuchElementException("Workspace not found"));
+
+
 
         subWorkspace.setName(request.name());
 

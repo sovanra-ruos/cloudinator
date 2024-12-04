@@ -1,5 +1,27 @@
 spring:
   application:
     name: infrastructure-service
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:3242/mbanking_prod
+    username: springdb
+    password: ITE2@2024
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+jenkins:
+  url: http://178.128.81.207:8080
+  username: asura
+  password: 118db6dd0682fbbf1c430716df1750b300
 server:
   port: 8085
+
+
+name:
+  com:
+    api:
+      token: 2654afc89abd16d01213a0fecadee55cded0ef7b
+      username: vannraruos@gmail.com

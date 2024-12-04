@@ -1,7 +1,12 @@
 package istad.co.projectservice.feature.workspace;
 
+import istad.co.projectservice.domain.User;
 import istad.co.projectservice.domain.Workspace;
+import istad.co.projectservice.feature.repository.UserRepository;
+import istad.co.projectservice.feature.workspace.dto.CreateWorkspaceRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.util.NoSuchElementException;
@@ -12,13 +17,22 @@ import java.util.UUID;
 public class WorkspaceServiceImpl implements WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
+    private final UserRepository userRepository;
 
     @Override
-    public void createWorkspace(String name) {
+    public void createWorkspace(CreateWorkspaceRequest request, Authentication authentication) {
+
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+
+        var idToken = jwtAuthenticationToken.getToken().getId();
+
+        User user = userRepository.findByUsername(idToken)
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         Workspace workspace = new Workspace();
         workspace.setUuid(UUID.randomUUID().toString());
-        workspace.setName(name);
+        workspace.setUser(user);
+        workspace.setName(request.name());
 
         workspaceRepository.save(workspace);
 
