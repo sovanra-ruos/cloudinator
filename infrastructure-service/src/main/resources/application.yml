@@ -2,7 +2,7 @@ spring:
   application:
     name: infrastructure-service
   datasource:
-    url: jdbc:postgresql://127.0.0.1:3242/mbanking_prod
+    url: jdbc:postgresql://178.128.81.207:3242/fastapi
     username: springdb
     password: ITE2@2024
     driver-class-name: org.postgresql.Driver
