@@ -4,6 +4,8 @@ import istad.co.infrastructureservice.feature.domain.SubDomainNameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class JenkinsServiceImpl implements JenkinsService{
@@ -35,6 +37,17 @@ public class JenkinsServiceImpl implements JenkinsService{
         } catch (Exception e) {
             throw new Exception("Error while creating pipeline", e);
         }
+    }
+
+    @Override
+    public int startMonolithicBuild(String name) throws Exception {
+
+        try {
+            return jenkinsRepository.startBuild(name);
+        } catch (Exception e) {
+            throw new Exception("Error while starting build", e);
+        }
+
     }
 
     private String createJobConfig(String name, String gitUrl, String branch, String token, String subdomain) {
@@ -84,10 +97,10 @@ public class JenkinsServiceImpl implements JenkinsService{
 
         String tokenizedGit = token;
 
-        String imageName = "sovanra/" + name;
+        String imageName = "sovanra/" + name.toLowerCase().replace("_", "-");
 
         return String.format(
-                "@Library('cloudinator') _\n" +
+                "@Library('monolithic') _\n" +
                         "\n" +
                         "pipeline {\n" +
                         "    agent any\n" +
@@ -99,7 +112,7 @@ public class JenkinsServiceImpl implements JenkinsService{
                         "        DOCKER_IMAGE_NAME = '%s'\n" +
                         "        DOCKER_IMAGE_TAG = '${BUILD_NUMBER}'\n" +
                         "        DOCKER_CREDENTIALS_ID = 'docker'\n" +
-                        "        GIT_INFRA_URL = 'https://github.com/ruos-sovanra/infra-final.git'\n" +
+                        "        GIT_INFRA_URL = 'https://github.com/sovanra-ruos/infra.git'\n" +
                         "        INVENTORY_FILE = 'inventory/inventory.ini'\n" +
                         "        PLAYBOOK_FILE = 'playbooks/deploy-with-k8s.yml'\n" +
                         "        HELM_FILE = 'playbooks/setup-helm.yml'\n" +
@@ -123,7 +136,7 @@ public class JenkinsServiceImpl implements JenkinsService{
                         "        stage('Generate Dockerfile') {\n" +
                         "            steps {\n" +
                         "                script {\n" +
-                        "                    projectInfo = detectProjectType('${env.WORKSPACE}')\n" +
+                        "                    projectInfo = detectProjectType(\"${env.WORKSPACE}\")\n" +
                         "                }\n" +
                         "            }\n" +
                         "        }\n" +
@@ -146,7 +159,7 @@ public class JenkinsServiceImpl implements JenkinsService{
                         "        stage('Build Docker Image') {\n" +
                         "            steps {\n" +
                         "                script {\n" +
-                        "                    dockerBuild('${DOCKER_IMAGE_NAME}', '${DOCKER_IMAGE_TAG}')\n" +
+                        "                    dockerBuild(\"${DOCKER_IMAGE_NAME}\", \"${DOCKER_IMAGE_TAG}\")\n" +
                         "                }\n" +
                         "            }\n" +
                         "        }\n" +
@@ -168,7 +181,7 @@ public class JenkinsServiceImpl implements JenkinsService{
                         "        stage('Push Image to Registry') {\n" +
                         "            steps {\n" +
                         "                script {\n" +
-                        "                    dockerPush('${DOCKER_IMAGE_NAME}', '${DOCKER_IMAGE_TAG}')\n" +
+                        "                    dockerPush(\"${DOCKER_IMAGE_NAME}\", \"${DOCKER_IMAGE_TAG}\")\n" +
                         "                }\n" +
                         "            }\n" +
                         "        }\n" +

@@ -42,15 +42,13 @@ public class JenkinsRepository {
         jenkins.createJob(jobName, jobConfig);
     }
 
-    public int startBuild(String jobName, Map<String,String> params) throws IOException,InterruptedException {
+    public int startBuild(String jobName) throws IOException,InterruptedException {
         JobWithDetails job = jenkins.getJob(jobName);
         QueueReference queueReference;
 
-        if(params != null && !params.isEmpty()) {
-            queueReference = job.build(params);
-        } else {
-            queueReference = job.build();
-        }
+
+        queueReference = job.build();
+
 
         return getBuildNumberFromQueue(queueReference);
     }

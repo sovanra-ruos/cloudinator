@@ -27,5 +27,11 @@ public class DeployServiceController {
         return ResponseEntity.ok("Deploy Service created successfully");
     }
 
+    @PostMapping("/run-service")
+    public ResponseEntity<String> runDeployService(@RequestParam String name) {
+        infraServiceFein.startBuild(name);
+        return ResponseEntity.ok("Deploy Service started successfully");
+    }
+
 
 }
