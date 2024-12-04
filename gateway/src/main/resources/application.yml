@@ -43,9 +43,11 @@ spring:
             - TokenRelay=
             - RewritePath=/project/(?<segment>.*),/$\{segment}
         - id: webapp-bff
-          uri: http://localhost:3001
+          uri: http://localhost:3000
           predicates:
             - Path=/**
+    loadbalancer:
+      enabled: false
 
 server:
   port: 8081
