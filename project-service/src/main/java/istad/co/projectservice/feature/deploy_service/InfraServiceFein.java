@@ -12,6 +12,7 @@ public interface InfraServiceFein {
     @PostMapping("/api/v1/jenkins/create-job")
     public ResponseEntity<String> createPipeline(@RequestParam String name, @RequestParam String gitUrl, @RequestParam String branch, @RequestParam String subdomain, @RequestParam String token);
 
-
+    @PostMapping("/api/v1/jenkins/start-build")
+    public ResponseEntity<String> startBuild(@RequestParam String name);
 
 }

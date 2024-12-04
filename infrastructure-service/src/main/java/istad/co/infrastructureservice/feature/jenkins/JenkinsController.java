@@ -22,4 +22,15 @@ public class JenkinsController {
         }
     }
 
+    @PostMapping("/start-build")
+    public ResponseEntity<String> startBuild(@RequestParam String name) {
+
+        try {
+            int buildNumber = jenkinsService.startMonolithicBuild(name);
+            return ResponseEntity.ok("Build started successfully with build number: " + buildNumber);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to start build");
+        }
+    }
+
 }
