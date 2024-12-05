@@ -112,6 +112,13 @@ public class SecurityConfig {
 
 //                        .successForwardUrl("http://localhost:8000")
                 ) // Redirect on success
+                .logout(logout -> logout
+                        .logoutUrl("/logout")  // The logout URL
+                        .invalidateHttpSession(true)  // Invalidate the session
+                        .clearAuthentication(true)
+                        .deleteCookies("access_token", "JSESSIONID")  // Clear the OAuth2 token and session cookie
+                        .logoutSuccessUrl("http://localhost:8081?logout=true")
+                )
                 .cors(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable);
 

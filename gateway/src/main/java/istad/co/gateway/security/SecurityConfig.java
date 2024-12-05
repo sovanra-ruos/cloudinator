@@ -75,9 +75,12 @@ public class SecurityConfig {
 
     private ServerLogoutSuccessHandler serverLogoutSuccessHandler() {
         RedirectServerLogoutSuccessHandler redirectServerLogoutSuccessHandler = new RedirectServerLogoutSuccessHandler();
-        final String DEFAULT_LOGOUT_SUCCESS_URL = "/";
-        URI logoutSuccessUrl = URI.create(DEFAULT_LOGOUT_SUCCESS_URL);
-        redirectServerLogoutSuccessHandler.setLogoutSuccessUrl(logoutSuccessUrl);
+//        final String DEFAULT_LOGOUT_SUCCESS_URL = "/";
+//        URI logoutSuccessUrl = URI.create(DEFAULT_LOGOUT_SUCCESS_URL);
+//        redirectServerLogoutSuccessHandler.setLogoutSuccessUrl(logoutSuccessUrl);
+        String authorizationServerLogoutUrl = "http://localhost:8080/logout";
+        redirectServerLogoutSuccessHandler.setLogoutSuccessUrl(URI.create(authorizationServerLogoutUrl));
+
 
         return redirectServerLogoutSuccessHandler;
     }
