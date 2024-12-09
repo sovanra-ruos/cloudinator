@@ -2,6 +2,7 @@ package istad.co.projectservice.feature.sub_workspace;
 
 import istad.co.projectservice.domain.SubWorkspace;
 import istad.co.projectservice.domain.Workspace;
+import istad.co.projectservice.feature.deploy_service.InfraServiceFein;
 import istad.co.projectservice.feature.sub_workspace.dto.SubWorkspaceRequest;
 import istad.co.projectservice.feature.workspace.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class SubWorkspaceServiceImpl implements SubWorkspaceService {
 
     private final SubWorkspaceRepository subWorkspaceRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final InfraServiceFein infraServiceFein;
 
     @Override
     public void createSubWorkspace(SubWorkspaceRequest request) {
@@ -34,6 +36,13 @@ public class SubWorkspaceServiceImpl implements SubWorkspaceService {
         subWorkspace.setUuid(UUID.randomUUID().toString());
 
         subWorkspace.setWorkspace(workspace);
+
+        if (subWorkspaceRepository.findByName(request.name()).isPresent()) {
+            throw new IllegalArgumentException("SubWorkspace already exists");
+        }else {
+            infraServiceFein.createFolder(request.name());
+//            infraServiceFein.createMainPipeLine(request.name());
+        }
 
         subWorkspaceRepository.save(subWorkspace);
 

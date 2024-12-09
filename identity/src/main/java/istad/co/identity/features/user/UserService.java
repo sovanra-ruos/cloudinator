@@ -6,8 +6,11 @@ import istad.co.identity.features.user.dto.UserCreateRequest;
 import istad.co.identity.features.user.dto.UserPasswordResetResponse;
 import istad.co.identity.features.user.dto.UserResponse;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.Authentication;
 
 public interface UserService {
+
+    UserResponse getCurrentUserInfo(Authentication authentication);
 
     void createNewUser(UserCreateRequest userCreateRequest);
 

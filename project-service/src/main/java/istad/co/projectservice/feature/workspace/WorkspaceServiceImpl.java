@@ -29,6 +29,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         User user = userRepository.findByUsername(idToken)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
+        System.out.println("User found: " + user.getUsername());
+
         Workspace workspace = new Workspace();
         workspace.setUuid(UUID.randomUUID().toString());
         workspace.setUser(user);

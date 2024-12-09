@@ -38,6 +38,11 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'com.offbytwo.jenkins:jenkins-client:0.3.8'
+
+
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.apache.kafka:kafka-streams'
+    implementation 'org.springframework.kafka:spring-kafka'
 }
 
 dependencyManagement {

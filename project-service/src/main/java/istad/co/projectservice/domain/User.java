@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Set;
+
 
 @NoArgsConstructor
 @Getter
@@ -52,4 +54,8 @@ public class User {
 
     @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean emailVerified;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
+    private Set<UserAuthority> userAuthorities;
+
 }

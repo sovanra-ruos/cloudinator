@@ -15,6 +15,11 @@ public class GitLabController {
     @PostMapping("/create-user")
     @ResponseStatus(HttpStatus.CREATED)
     public void createUser(@RequestParam String username, @RequestParam String email , @RequestParam String password) {
+
+        System.out.println("username = " + username);
+        System.out.println("email = " + email);
+        System.out.println("password = " + password);
+
         gitLabService.createUser(username ,email, password);
     }
 

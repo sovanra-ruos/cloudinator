@@ -2,9 +2,12 @@ package istad.co.projectservice.feature.gitlab;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import istad.co.projectservice.config.GitLabConfig;
-import istad.co.projectservice.feature.gitlab.dto.CreateUserRequest;
+import istad.co.projectservice.domain.Group;
+import istad.co.projectservice.domain.PersonalToken;
+import istad.co.projectservice.domain.User;
 import istad.co.projectservice.feature.gitlab.dto.GitLabGroupResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -13,7 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GitLabServiceImpl implements GitLabService {
@@ -21,6 +27,9 @@ public class GitLabServiceImpl implements GitLabService {
 
     private final GitLabConfig gitLabConfig;
     private final RestTemplate restTemplate;
+    private final PersonalRepository personalRepository;
+    private final IdentityRepository identityRepository;
+    private final GroupRepository groupRepository;
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
@@ -32,6 +41,10 @@ public class GitLabServiceImpl implements GitLabService {
 
     @Override
     public void createUser(String username, String email, String password) {
+
+        log.info("Creating user: " + username);
+        log.info("Creating user: " + email);
+        log.info("Creating user: " + password);
 
         String url = gitLabConfig.getBaseUrl() + "/users";
 
@@ -52,7 +65,7 @@ public class GitLabServiceImpl implements GitLabService {
 
             GitLabGroupResponse gitLabGroupResponse = objectMapper.readValue(response.getBody(), GitLabGroupResponse.class);
 
-            int userId = gitLabGroupResponse.getId();
+            Integer userId = gitLabGroupResponse.getId();
 
             createAccessToken(userId, username);
 
@@ -83,6 +96,23 @@ public class GitLabServiceImpl implements GitLabService {
             String token = (String) responseBody.get("token");
             System.out.println("{\"token\":\"" + token + "\"}");
             createGroup(username, token);
+
+            PersonalToken personalToken = new PersonalToken();
+
+            User user = identityRepository.findByUsername(username).orElseThrow(
+                    () -> new NoSuchElementException("User not found")
+            );
+
+            personalToken.setToken(token);
+            personalToken.setUuid(UUID.randomUUID().toString());
+            personalToken.setIdUser(userId);
+            personalToken.setUser(user);
+
+            log.info("Personal Token: " + user.getUsername() + " " + token);
+
+            personalRepository.save(personalToken);
+
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -114,8 +144,26 @@ public class GitLabServiceImpl implements GitLabService {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             GitLabGroupResponse gitLabGroupResponse = objectMapper.readValue(response.getBody(), GitLabGroupResponse.class);
-            int groupId = gitLabGroupResponse.getId();
-            System.out.println(groupId);
+
+            Integer groupId = gitLabGroupResponse.getId();
+
+            Group group = new Group();
+
+            User user = identityRepository.findByUsername(groupName).orElseThrow(
+                    () -> new NoSuchElementException("User not found")
+            );
+
+            group.setGroupName(groupName);
+
+            group.setPath(path);
+
+            group.setUuid(UUID.randomUUID().toString());
+
+            group.setProjectId(groupId);
+
+            group.setUser(user);
+
+            groupRepository.save(group);
         } catch (Exception e) {
             e.printStackTrace();
         }

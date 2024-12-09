@@ -7,7 +7,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +22,11 @@ public class UserController {
     private final UserService userService;
 
     private final GitLabServiceFein gitLabServiceFein;
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getCurrentUserInfo(Authentication authentication) {
+        return ResponseEntity.ok(userService.getCurrentUserInfo(authentication));
+    }
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping

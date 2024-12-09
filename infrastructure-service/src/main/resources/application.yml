@@ -1,8 +1,23 @@
 spring:
   application:
     name: infrastructure-service
+  kafka:
+    bootstrap-servers: 34.124.129.117:9092
+    application-id: infrastructure-service
+    properties:
+      default:
+        key:
+          serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+        value:
+          serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+      offset:
+        reset: earliest
+      commit:
+        interval:
+          ms: 100
+
   datasource:
-    url: jdbc:postgresql://178.128.81.207:3242/fastapi
+    url: jdbc:postgresql://34.124.129.117:3242/sineth
     username: springdb
     password: ITE2@2024
     driver-class-name: org.postgresql.Driver
@@ -12,13 +27,16 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
 jenkins:
-  url: http://178.128.81.207:8080
+  url: http://34.124.129.117:8080
   username: asura
-  password: 118db6dd0682fbbf1c430716df1750b300
+  password: 11281f0b5bbf6654c4a2f2c31897134406
+  log:
+    topic: jenkins-logs
+
 server:
   port: 8085
-
 
 name:
   com:

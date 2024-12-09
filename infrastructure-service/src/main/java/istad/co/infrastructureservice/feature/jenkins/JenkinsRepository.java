@@ -2,12 +2,15 @@ package istad.co.infrastructureservice.feature.jenkins;
 
 import com.offbytwo.jenkins.JenkinsServer;
 import com.offbytwo.jenkins.client.JenkinsHttpClient;
-
 import com.offbytwo.jenkins.model.*;
 import istad.co.infrastructureservice.feature.jenkins.dto.BuildInfo;
 import istad.co.infrastructureservice.feature.jenkins.dto.PipelineInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Repository;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -15,51 +18,55 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 @Repository
+@Slf4j
 public class JenkinsRepository {
 
     private final JenkinsServer jenkins;
     private final JenkinsHttpClient client;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private static final Logger logger = LoggerFactory.getLogger(JenkinsRepository.class);
 
     public JenkinsRepository(
             @Value("${jenkins.url}") String jenkinsUrl,
             @Value("${jenkins.username}") String jenkinsUsername,
-            @Value("${jenkins.password}") String jenkinsPassword) throws URISyntaxException {
+            @Value("${jenkins.password}") String jenkinsPassword,
+            KafkaTemplate<String, String> kafkaTemplate) throws URISyntaxException {
         this.client = new JenkinsHttpClient(new URI(jenkinsUrl), jenkinsUsername, jenkinsPassword);
         this.jenkins = new JenkinsServer(client);
+        this.kafkaTemplate = kafkaTemplate;
     }
-
 
     public void createJob(String jobName, String jobConfig) throws IOException {
         jenkins.createJob(jobName, jobConfig);
     }
 
-    public int startBuild(String jobName) throws IOException,InterruptedException {
+
+    public int startBuild(String jobName) throws IOException, InterruptedException {
         JobWithDetails job = jenkins.getJob(jobName);
-        QueueReference queueReference;
-
-
-        queueReference = job.build();
-
-
+        QueueReference queueReference = job.build();
         return getBuildNumberFromQueue(queueReference);
     }
 
-    private int getBuildNumberFromQueue(QueueReference queueReference) throws IOException,InterruptedException {
+    private int getBuildNumberFromQueue(QueueReference queueReference) throws IOException, InterruptedException {
         QueueItem queueItem = jenkins.getQueueItem(queueReference);
         while (queueItem.getExecutable() == null) {
             Thread.sleep(100);
             queueItem = jenkins.getQueueItem(queueReference);
         }
-
         return queueItem.getExecutable().getNumber().intValue();
     }
 
@@ -68,9 +75,43 @@ public class JenkinsRepository {
         return job.getBuildByNumber(buildNumber);
     }
 
+    public void streamBuildLog(String jobName, int buildNumber) throws IOException, InterruptedException {
+        Build build = getBuild(jobName, buildNumber);
+        BuildWithDetails buildDetails = build.details();
+        String topicName = String.format("%s-%d", jobName, buildNumber);
+        int lastPosition = 0;
+
+        while (buildDetails.isBuilding()) {
+            String consoleOutput = buildDetails.getConsoleOutputText();
+            if (consoleOutput.length() > lastPosition) {
+                String newContent = consoleOutput.substring(lastPosition);
+                kafkaTemplate.send(topicName, newContent);
+                lastPosition = consoleOutput.length();
+            }
+            Thread.sleep(1000);
+            buildDetails = build.details();
+        }
+
+        // Send final log content if any
+        String finalOutput = buildDetails.getConsoleOutputText();
+        if (finalOutput.length() > lastPosition) {
+            String newContent = finalOutput.substring(lastPosition);
+            kafkaTemplate.send(topicName, newContent);
+        }
+    }
+
     public void deleteJob(String jobName) throws IOException {
         jenkins.deleteJob(jobName, true);
     }
+
+    public void disableJob(String jobName) throws IOException {
+        jenkins.disableJob(jobName);
+    }
+
+    public void enableJob(String jobName) throws IOException {
+        jenkins.enableJob(jobName);
+    }
+
 
     public JobWithDetails getJob(String jobName) throws IOException {
         return jenkins.getJob(jobName);
@@ -84,7 +125,7 @@ public class JenkinsRepository {
             BuildWithDetails buildDetails = build.details();
             String status = buildDetails.getResult() != null ? buildDetails.getResult().toString() : "BUILDING";
             String log = buildDetails.getConsoleOutputText();
-            buildInfos.add(new BuildInfo(build.getNumber(), status,log));
+            buildInfos.add(new BuildInfo(build.getNumber(), status, log));
         }
 
         return buildInfos;
@@ -106,8 +147,7 @@ public class JenkinsRepository {
     private String getJobConfigXml(String jobName) throws IOException {
         try {
             String path = "/job/" + jobName + "/config.xml";
-            String response = client.get(path);
-            return response;
+            return client.get(path);
         } catch (HttpResponseException e) {
             throw new IOException("Failed to fetch job configuration", e);
         }
@@ -130,6 +170,87 @@ public class JenkinsRepository {
         return "";
     }
 
+    public void updateJobPipeline(String folderName, String jobName, String serviceName) throws JenkinsException {
+        try {
+            // Get the current job configuration XML
+            String jobPath = String.format("%s/job/%s", folderName, jobName);
+            String configXml = client.get(String.format("/job/%s/config.xml", jobPath));
+
+            log.info("Original XML: " + configXml);
+
+            // Parse the existing configuration
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new ByteArrayInputStream(configXml.getBytes()));
+
+            // Find the 'parameters' section within the script
+            NodeList scriptNodes = document.getElementsByTagName("script");
+            if (scriptNodes.getLength() > 0) {
+                Element scriptElement = (Element) scriptNodes.item(0);
+                String scriptContent = scriptElement.getTextContent();
+
+                // Parse the script content to find the SERVICES parameter
+                int servicesIndex = scriptContent.indexOf("SERVICES', defaultValue:");
+                if (servicesIndex != -1) {
+                    int startQuote = scriptContent.indexOf("'", servicesIndex + "SERVICES', defaultValue:".length());
+                    int endQuote = scriptContent.indexOf("'", startQuote + 1);
+
+                    if (startQuote != -1 && endQuote != -1) {
+                        String currentServices = scriptContent.substring(startQuote + 1, endQuote);
+                        String[] servicesList = currentServices.split(",");
+
+                        // Check if the new service is already in the list
+                        boolean serviceExists = Arrays.asList(servicesList).contains(serviceName);
+
+                        if (!serviceExists) {
+                            // Append the new service
+                            String updatedServices = currentServices.isEmpty() ?
+                                    serviceName : currentServices + "," + serviceName;
+
+                            // Replace the old services list with the updated one
+                            String updatedScriptContent = scriptContent.substring(0, startQuote + 1) +
+                                    updatedServices + scriptContent.substring(endQuote);
+
+                            scriptElement.setTextContent(updatedScriptContent);
+
+                            log.info("Updated services list: " + updatedServices);
+                        } else {
+                            log.info("Service already exists in the list: " + serviceName);
+                        }
+                    }
+                }
+            }
+
+            // Convert the modified document back to string
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(document), new StreamResult(writer));
+            String updatedConfig = writer.toString();
+
+            log.info("Updated XML: " + updatedConfig);
+
+            // Update the job configuration
+            client.post_xml(String.format("/job/%s/config.xml", jobPath), updatedConfig);
+
+        } catch (Exception e) {
+            throw new JenkinsException("Failed to update pipeline configuration: " + e.getMessage(), e);
+        }
+    }
+
+    public static class JenkinsException extends Exception {
+        public JenkinsException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    public String  getJobXml(FolderJob folderName, String jobName) throws IOException {
+        return jenkins.getJobXml(folderName, jobName);
+    }
 
 
+    public void createFolder(String folderName) throws IOException {
+        jenkins.createFolder(folderName);
+    }
 }
+

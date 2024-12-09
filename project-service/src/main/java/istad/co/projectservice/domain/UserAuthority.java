@@ -1,27 +1,27 @@
 package istad.co.projectservice.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "groups")
+@NoArgsConstructor
 @Getter
 @Setter
-@NoArgsConstructor
-public class Group {
+@Entity
+@Table(name = "users_authorities")
+public class UserAuthority {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String uuid;
-    private String groupName;
-    private String path;
-    private Integer projectId;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JsonBackReference
     private User user;
+
+    @ManyToOne
+    private Authority authority;
 
 }

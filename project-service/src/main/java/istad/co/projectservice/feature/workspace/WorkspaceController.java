@@ -34,6 +34,7 @@ public class WorkspaceController {
     }
 
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/create")
     public ResponseEntity<?> createWorkspace(@RequestBody CreateWorkspaceRequest name, Authentication authentication) {
         workspaceService.createWorkspace(name,authentication);

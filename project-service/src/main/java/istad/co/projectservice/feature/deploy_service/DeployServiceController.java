@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/v1/deploy-service")
@@ -32,6 +33,18 @@ public class DeployServiceController {
         infraServiceFein.startBuild(name);
         return ResponseEntity.ok("Deploy Service started successfully");
     }
+
+    @GetMapping("/stream-log")
+    public ResponseEntity<String> streamLog(@RequestParam String jobName, @RequestParam int buildNumber) {
+        return infraServiceFein.streamLogs(jobName, buildNumber);
+    }
+
+    @GetMapping("/stream-logs")
+    public SseEmitter streamLogs(@RequestParam String jobName, @RequestParam int buildNumber) {
+        return infraServiceFein.streamLog(jobName, buildNumber);
+    }
+
+
 
 
 }
