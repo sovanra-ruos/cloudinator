@@ -14,6 +14,7 @@ public record CreateDeployServiceRequest(
         @NotNull(message = "Subdomain is required")
         String subdomain,
         String token,
+        String type,
         @NotNull(message = "Workspace name is required")
         String workspaceName
 ) {

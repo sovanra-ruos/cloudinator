@@ -1,4 +1,4 @@
-package istad.co.infrastructureservice.feature.jenkins.dto;
+package istad.co.projectservice.feature.deploy_service.dto;
 
 import lombok.Builder;
 

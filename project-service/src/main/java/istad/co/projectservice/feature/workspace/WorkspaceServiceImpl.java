@@ -4,14 +4,18 @@ import istad.co.projectservice.domain.User;
 import istad.co.projectservice.domain.Workspace;
 import istad.co.projectservice.feature.repository.UserRepository;
 import istad.co.projectservice.feature.workspace.dto.CreateWorkspaceRequest;
+import istad.co.projectservice.feature.workspace.dto.WorkspaceResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WorkspaceServiceImpl implements WorkspaceService {
@@ -62,7 +66,24 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     }
 
+    @Override
+    public List<WorkspaceResponse> getWorkspaces(Authentication authentication) {
 
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+
+        var idToken = jwtAuthenticationToken.getToken().getId();
+
+        List<Workspace> workspaces = workspaceRepository.findWorkspaceByUser_Username(idToken);
+
+        log.info("Workspaces found: " + workspaces.size());
+
+        return workspaces.stream().map(
+                workspace -> WorkspaceResponse.builder()
+                        .name(workspace.getName())
+                        .uuid(workspace.getUuid())
+                        .build()
+        ).toList();
+    }
 
 
 }

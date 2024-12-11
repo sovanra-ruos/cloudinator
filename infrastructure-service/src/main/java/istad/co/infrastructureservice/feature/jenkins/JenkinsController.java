@@ -1,5 +1,6 @@
 package istad.co.infrastructureservice.feature.jenkins;
 
+import istad.co.infrastructureservice.feature.jenkins.dto.BuildInfo;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -106,7 +108,7 @@ public class JenkinsController {
         }
     }
 
-    @PutMapping("/update-job")
+    @PostMapping("/update-job")
     public ResponseEntity<String > updateJob(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String serviceName) {
 
         try {
@@ -119,6 +121,13 @@ public class JenkinsController {
 
     }
 
-
+    @GetMapping("/get-build-numbers")
+    public ResponseEntity<List<BuildInfo>> getBuildNumbers(@RequestParam String jobName) {
+        try {
+            return ResponseEntity.ok(jenkinsService.getBuildsInfo(jobName));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
 
 }

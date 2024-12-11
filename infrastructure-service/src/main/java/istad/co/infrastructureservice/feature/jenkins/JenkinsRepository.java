@@ -125,7 +125,7 @@ public class JenkinsRepository {
             BuildWithDetails buildDetails = build.details();
             String status = buildDetails.getResult() != null ? buildDetails.getResult().toString() : "BUILDING";
             String log = buildDetails.getConsoleOutputText();
-            buildInfos.add(new BuildInfo(build.getNumber(), status, log));
+            buildInfos.add(new BuildInfo(build.getNumber(), status));
         }
 
         return buildInfos;

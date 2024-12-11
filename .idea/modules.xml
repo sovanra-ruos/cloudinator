@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/cloudinator.iml" filepath="$PROJECT_DIR$/.idea/cloudinator.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/identity.main.iml" filepath="$PROJECT_DIR$/.idea/modules/identity.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/infrastructure-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/infrastructure-service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/project-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/project-service.main.iml" />
     </modules>
   </component>
 </project>

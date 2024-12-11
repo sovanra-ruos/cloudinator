@@ -1,9 +1,11 @@
 package istad.co.infrastructureservice.feature.jenkins;
 
 import istad.co.infrastructureservice.exception.JenkinsException;
+import istad.co.infrastructureservice.feature.jenkins.dto.BuildInfo;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public interface JenkinsService {
@@ -123,5 +125,13 @@ public interface JenkinsService {
      * @throws JenkinsException if updating the job pipeline fails
      */
     void updateJobPipeline(String folderName, String jobName, String serviceName) throws JenkinsException;
+
+
+    /**
+     * Gets all the jobs
+     * @return
+     * @throws JenkinsException
+     */
+    List<BuildInfo> getBuildsInfo(String jobName) throws IOException,InterruptedException;
 
 }

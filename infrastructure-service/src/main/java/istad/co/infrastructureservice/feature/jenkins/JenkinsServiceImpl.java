@@ -4,6 +4,7 @@ import com.offbytwo.jenkins.model.Build;
 import com.offbytwo.jenkins.model.BuildWithDetails;
 import istad.co.infrastructureservice.exception.JenkinsException;
 import istad.co.infrastructureservice.feature.domain.SubDomainNameService;
+import istad.co.infrastructureservice.feature.jenkins.dto.BuildInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -233,9 +235,25 @@ public class JenkinsServiceImpl implements JenkinsService {
 
     }
 
+    @Override
+    public List<BuildInfo> getBuildsInfo(String jobName) throws IOException, InterruptedException {
+
+        try {
+            List<BuildInfo> buildInfoList = jenkinsRepository.getBuildsInfo(jobName);
+            log.info("Successfully retrieved build information for job: {}", jobName);
+            return buildInfoList;
+        } catch (Exception e) {
+            log.error("Failed to retrieve build information for job: {}", jobName, e);
+            throw new JenkinsException("Failed to retrieve build information for job: " + jobName, e);
+        }
+
+
+    }
+
+
     private String generateRandomDomain(String dbName) {
         int randomNumber = new Random().nextInt(900000) + 100000; // Generate a 6-digit random number
-        return dbName + randomNumber + ".psa-khmer.world";
+        return dbName + randomNumber;
     }
 
     @Override
@@ -295,32 +313,43 @@ public class JenkinsServiceImpl implements JenkinsService {
     }
 
     public String createDatabasePipeline(String dbName, String dbUser, String dbPassword, String dbType) {
+
         String randomDomain = generateRandomDomain(dbName);
+
+        subDomainNameService.createSubdomain(randomDomain, "34.143.215.235");
+
+        String domain = randomDomain + ".psa-khmer.world";
+
         String namespace = dbName + randomDomain.substring(dbName.length(), dbName.length() + 6);
 
+        String storageSize = "1Gi";
+
+        String email = "vannraruos@gmail.com";
+
         return String.format(
-                "pipeline {\n" +
+                "@Library('monolithic') _\n" +
+                        "\n" +
+                        "pipeline {\n" +
                         "    agent any\n" +
                         "    parameters {\n" +
-                        "        string(name: 'DB_TYPE', defaultValue: '%s', description: 'Select the database type')\n" +
+                        "        string(name: 'DB_TYPE', defaultValue: '%s', description: 'Database type (postgres or mongodb)')\n" +
+                        "        string(name: 'NAMESPACE', defaultValue: '%s', description: 'Kubernetes namespace')\n" +
+                        "        string(name: 'STORAGE_SIZE', defaultValue: '%s', description: 'Database storage size')\n" +
                         "    }\n" +
                         "    environment {\n" +
-                        "        NAMESPACE = '%s'\n" +
                         "        DOMAIN_NAME = '%s'\n" +
-                        "        EMAIL = 'info@gmail.com'\n" +
+                        "        EMAIL = '%s'\n" +
                         "        INVENTORY_FILE = 'inventory/inventory.ini'\n" +
                         "        PLAYBOOK_FILE = 'playbooks/deploy-database.yml'\n" +
-                        "        GIT_BRANCH = 'main'\n" +
-                        "        GIT_INFRA_URL = 'https://github.com/devoneone/infra.git'\n" +
                         "        DB_NAME = '%s'\n" +
-                        "        DB_USER = '%s'\n" +
+                        "        DB_USERNAME = '%s'\n" +
                         "        DB_PASSWORD = '%s'\n" +
                         "        DB_IMAGE = \"${params.DB_TYPE == 'mongodb' ? 'mongo:4.4' : 'postgres:13'}\"\n" +
                         "    }\n" +
                         "    stages {\n" +
-                        "        stage('Clone infra') {\n" +
+                        "        stage('Clone Infrastructure') {\n" +
                         "            steps {\n" +
-                        "                git branch: env.GIT_BRANCH, url: env.GIT_INFRA_URL\n" +
+                        "                git branch: 'main', url: 'https://github.com/devoneone/infra.git'\n" +
                         "            }\n" +
                         "        }\n" +
                         "        stage('Deploy Database') {\n" +
@@ -330,22 +359,30 @@ public class JenkinsServiceImpl implements JenkinsService {
                         "                    ansible-playbook -i ${INVENTORY_FILE} ${PLAYBOOK_FILE} \\\n" +
                         "                    -e \"DB_NAME=${DB_NAME}\" \\\n" +
                         "                    -e \"DB_IMAGE=${DB_IMAGE}\" \\\n" +
-                        "                    -e \"NAMESPACE=${NAMESPACE}\" \\\n" +
+                        "                    -e \"NAMESPACE=${params.NAMESPACE}\" \\\n" +
+                        "                    -e \"DB_USERNAME=${DB_USERNAME}\" \\\n" +
                         "                    -e \"DB_PASSWORD=${DB_PASSWORD}\" \\\n" +
-                        "                    -e \"DOMAIN_NAME=db.${DOMAIN_NAME}\" \\\n" +
-                        "                    -e \"EMAIL=${EMAIL}\"\n" +
+                        "                    -e \"DOMAIN_NAME=${DOMAIN_NAME}\" \\\n" +
+                        "                    -e \"EMAIL=${EMAIL}\" \\\n" +
+                        "                    -e \"STORAGE_SIZE=${params.STORAGE_SIZE}\"\n" +
                         "                    \"\"\"\n" +
                         "                }\n" +
                         "            }\n" +
                         "        }\n" +
                         "    }\n" +
                         "    post {\n" +
+                        "        success {\n" +
+                        "            echo 'Database deployed successfully.'\n" +
+                        "        }\n" +
+                        "        failure {\n" +
+                        "            echo 'Deployment failed.'\n" +
+                        "        }\n" +
                         "        always {\n" +
                         "            cleanWs()\n" +
                         "        }\n" +
                         "    }\n" +
                         "}\n",
-                dbType, namespace, randomDomain, dbName, dbUser, dbPassword
+                dbType, namespace, storageSize, domain, email, dbName, dbUser, dbPassword
         );
     }
 

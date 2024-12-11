@@ -1,6 +1,7 @@
 package istad.co.projectservice.feature.workspace;
 
 import istad.co.projectservice.feature.workspace.dto.CreateWorkspaceRequest;
+import istad.co.projectservice.feature.workspace.dto.WorkspaceResponse;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
@@ -9,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -18,20 +20,20 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
 
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping
-    public String getWorkspace(Authentication authentication) {
-
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-
-        var idToken = jwtAuthenticationToken.getToken().getId();
-
-        if (idToken != null) {
-            return idToken;
-        }else {
-            return "No id token found";
-        }
-    }
+//    @PreAuthorize("isAuthenticated()")
+//    @GetMapping
+//    public String getWorkspace(Authentication authentication) {
+//
+//        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+//
+//        var idToken = jwtAuthenticationToken.getToken().getId();
+//
+//        if (idToken != null) {
+//            return idToken;
+//        }else {
+//            return "No id token found";
+//        }
+//    }
 
 
     @PreAuthorize("isAuthenticated()")
@@ -41,17 +43,28 @@ public class WorkspaceController {
         return ResponseEntity.ok("Workspace created successfully");
     }
 
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/delete/{name}")
     public ResponseEntity<?> deleteWorkspace(@PathVariable String name) {
         workspaceService.deleteWorkspace(name);
         return ResponseEntity.ok("Workspace deleted successfully");
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/update/{name}")
     public ResponseEntity<?> updateWorkspace(@PathVariable String name) {
         workspaceService.updateWorkspace(name);
         return ResponseEntity.ok("Workspace updated successfully");
     }
 
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping
+    public ResponseEntity<List<WorkspaceResponse>> getWorkspaces(Authentication authentication) {
+
+        return ResponseEntity.ok(workspaceService.getWorkspaces(authentication));
+
+
+    }
 
 }

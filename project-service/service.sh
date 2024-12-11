@@ -254,13 +254,26 @@ create_project "${project_name_lower}" "${main_class}"
 cd "${project_name_lower}"
 git init
 repo_url=$(create_gitlab_repo "${project_name_lower}")
+
+# Embed the GitLab token into the repository URL for authentication
 authenticated_repo_url=$(echo "${repo_url}" | sed "s|https://|https://${gitlab_token}@|")
 
 git remote add origin "${authenticated_repo_url}"
 git branch -M main
 git add .
 git commit -m "Initial commit"
-git push -u origin main
+
+# Use GIT_ASKPASS to pass the token explicitly
+GIT_ASKPASS=$(mktemp)
+cat <<EOF > $GIT_ASKPASS
+#!/bin/sh
+echo ${gitlab_token}
+EOF
+chmod +x $GIT_ASKPASS
+
+GIT_ASKPASS=$GIT_ASKPASS git push -u origin main
+
+rm $GIT_ASKPASS
 
 # Cleanup project files after initializing repository
 cd ..

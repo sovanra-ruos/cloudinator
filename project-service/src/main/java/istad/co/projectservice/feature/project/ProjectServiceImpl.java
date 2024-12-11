@@ -1,11 +1,11 @@
 package istad.co.projectservice.feature.project;
 
-import istad.co.projectservice.domain.Group;
-import istad.co.projectservice.domain.PersonalToken;
-import istad.co.projectservice.domain.User;
+import istad.co.projectservice.domain.*;
+import istad.co.projectservice.feature.deploy_service.InfraServiceFein;
 import istad.co.projectservice.feature.gitlab.GroupRepository;
 import istad.co.projectservice.feature.gitlab.PersonalRepository;
 import istad.co.projectservice.feature.repository.UserRepository;
+import istad.co.projectservice.feature.sub_workspace.SubWorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -17,6 +17,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -26,14 +27,19 @@ public class ProjectServiceImpl implements ProjectService{
     private final UserRepository userRepository;
     private final PersonalRepository personalRepository;
     private final GroupRepository groupRepository;
-
+    private final InfraServiceFein infraServiceFein;
+    private final ProjectRepository projectRepository;
+    private final SubWorkspaceRepository subWorkspaceRepository;
 
     @Override
     public void createSpringService(String name, String group, String folder, List<String> dependencies, Authentication authentication) {
 
+        MicroService microService = new MicroService();
+
         JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
 
         var idToken = jwtAuthenticationToken.getToken().getId();
+
 
         User user = userRepository.findByUsername(idToken)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
@@ -50,7 +56,20 @@ public class ProjectServiceImpl implements ProjectService{
 
         log.info("Group found: " + groupEntity.getProjectId());
 
+        SubWorkspace subWorkspace = subWorkspaceRepository.findByName(folder)
+                .orElseThrow(() -> new NoSuchElementException("SubWorkspace not found"));
 
+
+        microService.setBranch("main");
+        microService.setName(name);
+        microService.setNamespace(group);
+        microService.setUuid(UUID.randomUUID().toString());
+        microService.setSubWorkspace(subWorkspace);
+        microService.setGit("https://git.shinoshike.studio/" + groupEntity.getGroupName() + "/" + name + ".git");
+
+        projectRepository.save(microService);
+
+        infraServiceFein.updateJob(folder,folder,name);
 
         // Validate inputs
         if (name == null || name.isEmpty() || group == null || group.isEmpty() || folder == null || folder.isEmpty()) {

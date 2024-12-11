@@ -15,11 +15,18 @@ public class DeployService {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String uuid;
+    @Column(unique = true, nullable = false)
     private String name;
+    @Column(nullable = false)
     private String gitUrl;
+    @Column(nullable = false)
     private String branch;
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String subdomain;
+
+    private Boolean status;
+
+    private String type;
 
     @ManyToOne
     @JoinColumn(name = "workspace_id")
