@@ -96,12 +96,29 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(Customizer.withDefaults())
                 )
-                .formLogin(Customizer.withDefaults())
+//                .formLogin(Customizer.withDefaults())
                 /*.formLogin(form -> form
                         .loginPage("/oauth2/login")
                         .usernameParameter("gp_account")
                         .passwordParameter("gp_password")
                 )*/
+                .formLogin(form -> form
+                                .loginPage("/login")  // Custom login page URL
+                                .loginProcessingUrl("/login")  // Where the login form posts to
+                                .usernameParameter("username")  // Default username parameter is 'username'
+                                .passwordParameter("password")  // Default password parameter is 'password'
+                                .failureUrl("/login?error=true")  // URL to redirect to in case of login failure
+                                .defaultSuccessUrl("/login?success=true", false)
+
+//                        .successForwardUrl("http://localhost:8000")
+                ) // Redirect on success
+                .logout(logout -> logout
+                        .logoutUrl("/logout")  // The logout URL
+                        .invalidateHttpSession(true)  // Invalidate the session
+                        .clearAuthentication(true)
+                        .deleteCookies("access_token", "JSESSIONID")  // Clear the OAuth2 token and session cookie
+                        .logoutSuccessUrl("http://localhost:8081?logout=true")
+                )
                 .cors(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable);
 
