@@ -11,7 +11,7 @@ spring:
     config:
       server:
         vault:
-          host: 157.245.153.57
+          host: 34.124.129.117
           port: 8210
           scheme: http
           authentication: token

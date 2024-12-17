@@ -120,6 +120,7 @@ public class Init {
                     scopes.add(OidcScopes.EMAIL);
                 })
                 .redirectUris(uris -> {
+                    uris.add("http://34.87.156.153:8081/login/oauth2/code/devops");
                     uris.add("http://localhost:8081/login/oauth2/code/devops");
                     uris.add("http://localhost:8087/login/oauth2/code/devops");
                 })

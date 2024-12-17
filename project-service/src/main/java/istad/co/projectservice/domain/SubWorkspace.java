@@ -18,6 +18,7 @@ public class SubWorkspace {
     private String uuid;
     @Column(unique = true,nullable = true)
     private String name;
+    private String type;
 
     @ManyToOne
     @JoinColumn(name = "workspace_id")

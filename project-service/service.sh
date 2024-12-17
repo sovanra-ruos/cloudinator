@@ -8,12 +8,13 @@ group=$2
 folder_name=$3
 gitlab_token=$4   # GitLab token passed as parameter
 group_id=$5       # Group ID passed as parameter
-dependencies_input=${6:-} # Optional argument for additional dependencies
+service_name=${6:-}  # Optional array of services name parameter
+dependencies_input=${7:-}
 
 # Configuration for external services
-JENKINS_URL="http://34.124.129.117:8080"
+JENKINS_URL="http://34.142.187.195:8080"
 JENKINS_USER="asura"
-JENKINS_API_TOKEN="11281f0b5bbf6654c4a2f2c31897134406"
+JENKINS_API_TOKEN="11cae77a9e032f7f2ebd9b82e75aeb087e"
 GITLAB_URL="https://git.shinoshike.studio/"
 
 # Function to check if a command exists
@@ -146,24 +147,36 @@ create_jenkins_job() {
     local folder_name=$1
     local job_name=$2
     local project_name_lower=$3
+    local service_names_input=$service_name  # Use passed service names
+
+    # Process the service_name parameter into an array
+    IFS=',' read -ra service_names_array <<< "$service_names_input"
+    local dependencies_list=""
+    for service in "${service_names_array[@]}"; do
+        dependencies_list+=" '${service}',"
+    done
+    dependencies_list="${dependencies_list%,}" # Remove trailing comma
 
     local job_name_with_prefix="${job_name}-pipeline"
 
-    # Jenkins pipeline script with actual variable substitution
+    # Jenkins pipeline script with variable substitution
     local pipeline_script=$(cat <<EOF
 @Library('cloudinator-microservices') _
+
+def DEPENDENCIES = [${dependencies_list}]
 
 pipeline {
     agent any
     environment {
-        SERVICE_NAME = '${project_name_lower}'
+        SERVICE_NAME = '${SERVICE_NAME}'
         DOCKER_CREDENTIALS_ID = 'docker'
         GIT_REPO_URL = '${repo_url}'
         GIT_INFRA_URL = 'https://github.com/devoneone/micro-services-infra.git'
         INVENTORY_FILE = 'inventory/inventory.ini'
         PLAYBOOK_FILE = 'playbooks/deploy-microservice.yml'
         HELM_FILE = "playbooks/setup-helm-microservice.yml"
-        NAMESPACE = '${project_name_lower}'
+        ARGO_FILE = 'playbooks/synx-argocd.yml'
+        NAMESPACE = '${folder_name}'
         EMAIL = "your-email@example.com"
         TRIVY_SEVERITY = "HIGH,CRITICAL"
         TRIVY_EXIT_CODE = "0"
@@ -171,13 +184,12 @@ pipeline {
         VULN_THRESHOLD = "5"
         DOCKER_IMAGE_NAME = "sovanra/\${SERVICE_NAME}"
         DOCKER_IMAGE_TAG = "\${BUILD_NUMBER}"
-        DEPENDENCIES = ['config-server']
     }
     stages {
         stage('Check Dependencies') {
             steps {
                 script {
-                    checkDependencies(DEPENDENCIES)
+                    checkDependencies(DEPENDENCIES, '${folder_name}')
                 }
             }
         }
@@ -217,6 +229,16 @@ pipeline {
                 }
             }
         }
+        stage('Sync ArgoCD') {
+            steps {
+                syncArgoCD(
+                    INVENTORY_FILE,
+                    ARGO_FILE,
+                    APP_NAME,
+                    DOCKER_IMAGE_TAG
+                )
+            }
+        }
     }
 }
 EOF
@@ -246,6 +268,7 @@ EOF
         -H "Content-Type: application/xml" \
         --data-raw "${job_config_xml}" || error_exit "Failed to create Jenkins job in folder ${folder_name}"
 }
+
 
 # Main script execution
 create_project "${project_name_lower}" "${main_class}"

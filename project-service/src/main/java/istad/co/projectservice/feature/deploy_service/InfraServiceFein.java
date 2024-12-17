@@ -40,8 +40,8 @@ public interface InfraServiceFein {
     @DeleteMapping("/api/v1/jenkins/delete-job")
     public ResponseEntity<String> deleteJob(@RequestParam String jobName);
 
-    @PostMapping("/api/v1/jenkins/update-job")
-    public ResponseEntity<String > updateJob(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String serviceName);
+//    @PostMapping("/api/v1/jenkins/update-job")
+//    public ResponseEntity<String > updateJob(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String serviceName);
 
     @GetMapping("/api/v1/jenkins/get-build-numbers")
     public ResponseEntity<List<BuildInfo>> getBuildNumbers(@RequestParam String jobName);
@@ -49,6 +49,11 @@ public interface InfraServiceFein {
     @GetMapping(value = "/api/v1/jenkins/stream-log/{jobName}/{buildNumber}", produces = "text/event-stream")
     Response streamLog(@PathVariable("jobName") String jobName, @PathVariable("buildNumber") int buildNumber);
 
+    @GetMapping("/api/v1/jenkins/get-build-numbers/folder")
+    public ResponseEntity<List<BuildInfo>> getBuildNumbersInFolder(@RequestParam String folderName, @RequestParam String jobName);
+
+    @PostMapping("/api/v1/jenkins/start-build/folder")
+    public ResponseEntity<String> startBuildInFolder(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String[] serviceName);
 
 
 }

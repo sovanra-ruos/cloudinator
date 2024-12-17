@@ -22,9 +22,4 @@ public class ProjectService {
     private String branch;
     private String token;
 
-    @ManyToOne
-    @JoinColumn(name = "service_type_id")
-    private ServiceType serviceType;
-
-
 }

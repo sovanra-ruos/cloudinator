@@ -17,7 +17,7 @@ spring:
           ms: 100
 
   datasource:
-    url: jdbc:postgresql://34.124.129.117:3242/sineth
+    url: jdbc:postgresql://34.142.187.195:3242/fastapi
     username: springdb
     password: ITE2@2024
     driver-class-name: org.postgresql.Driver
@@ -29,11 +29,12 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 jenkins:
-  url: http://34.124.129.117:8080
+  url: http://34.142.187.195:8080
   username: asura
-  password: 11281f0b5bbf6654c4a2f2c31897134406
+  password: 11cae77a9e032f7f2ebd9b82e75aeb087e
   log:
     topic: jenkins-logs
+
 
 server:
   port: 8085

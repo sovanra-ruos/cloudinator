@@ -26,9 +26,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080
+          issuer-uri: http://34.87.156.153:8080
 logging:
   level:
     org:
       springframework:
         security: DEBUG
+

@@ -2,6 +2,7 @@ package istad.co.infrastructureservice.feature.jenkins;
 
 import istad.co.infrastructureservice.feature.jenkins.dto.BuildInfo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/jenkins")
@@ -41,6 +43,20 @@ public class JenkinsController {
         }
     }
 
+    @PostMapping("/start-build/folder")
+    public ResponseEntity<String> startBuildInFolder(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String[] serviceName) {
+
+        log.info("Starting build for folder {} and name {}", folderName, jobName);
+        log.info("Service name {}", serviceName);
+
+        try {
+            int buildNumber = jenkinsService.StartBuildJobInFolder(folderName, jobName, serviceName);
+            return ResponseEntity.ok("Build started successfully with build number: " + buildNumber);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to start build");
+        }
+    }
+
     @GetMapping("/stream-logs")
     public ResponseEntity<String> streamLogs(@RequestParam String jobName, @RequestParam int buildNumber) {
 
@@ -55,6 +71,11 @@ public class JenkinsController {
     @GetMapping("/stream-log/{jobName}/{buildNumber}")
     public SseEmitter streamLog(@PathVariable String jobName, @PathVariable int buildNumber) throws IOException, InterruptedException {
         return jenkinsService.streamLog(jobName, buildNumber);
+    }
+
+    @GetMapping("/stream-log/folder/{folderName}/{jobName}/{buildNumber}")
+    public SseEmitter streamLogInFolder(@PathVariable String folderName, @PathVariable String jobName, @PathVariable int buildNumber) throws IOException, InterruptedException {
+        return jenkinsService.streamLogInFolder(folderName, jobName, buildNumber);
     }
 
     @PostMapping("/create-folder")
@@ -109,7 +130,7 @@ public class JenkinsController {
     }
 
     @PostMapping("/update-job")
-    public ResponseEntity<String > updateJob(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String serviceName) {
+    public ResponseEntity<String > updateJob(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String[] serviceName) {
 
         try {
             jenkinsService.updateJobPipeline(folderName, jobName, serviceName);
@@ -121,12 +142,43 @@ public class JenkinsController {
 
     }
 
+    @PostMapping("/update-dependency")
+    public ResponseEntity<String> updateDependency(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String[] dependencies) {
+        try {
+
+            jenkinsService.updateJobDependency(folderName, jobName, dependencies);
+
+            return ResponseEntity.ok("Job dependencies updated successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to update job dependencies");
+        }
+    }
+
     @GetMapping("/get-build-numbers")
     public ResponseEntity<List<BuildInfo>> getBuildNumbers(@RequestParam String jobName) {
         try {
             return ResponseEntity.ok(jenkinsService.getBuildsInfo(jobName));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @GetMapping("/get-build-numbers/folder")
+    public ResponseEntity<List<BuildInfo>> getBuildNumbersInFolder(@RequestParam String folderName, @RequestParam String jobName) {
+        try {
+            return ResponseEntity.ok(jenkinsService.getBuildsInfoInFolder(folderName, jobName));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @PostMapping("/delete-service/{namespace}")
+    public ResponseEntity<String> deleteService(@PathVariable String namespace) {
+        try {
+            jenkinsService.deleteService(namespace);
+            return ResponseEntity.ok("Service deleted successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to delete service");
         }
     }
 

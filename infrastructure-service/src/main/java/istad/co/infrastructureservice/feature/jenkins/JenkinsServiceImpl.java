@@ -7,6 +7,7 @@ import istad.co.infrastructureservice.feature.domain.SubDomainNameService;
 import istad.co.infrastructureservice.feature.jenkins.dto.BuildInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.map.HashedMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class JenkinsServiceImpl implements JenkinsService {
 
         try {
             validateJobParameters(name, gitUrl, branch, subdomain);
-            subDomainNameService.createSubdomain(subdomain, "34.143.215.235");
+            subDomainNameService.createSubdomain(subdomain, "35.187.253.47");
 
             String jobConfig = createJobConfig(name, gitUrl, branch, token, subdomain);
             jenkinsRepository.createJob(name, jobConfig);
@@ -63,6 +64,27 @@ public class JenkinsServiceImpl implements JenkinsService {
         } catch (Exception e) {
             log.error("Failed to start build for job: {}", name, e);
             throw new JenkinsException("Failed to start build: " + name, e);
+        }
+    }
+
+    @Override
+    public int StartBuildJobInFolder(String folderName, String jobName, String[] serviceName) throws JenkinsException {
+
+        log.info("Starting build for folder {} and name {}", folderName, jobName);
+        log.info("Service names: {}", (Object) serviceName);
+
+        try {
+            jenkinsRepository.updateJobPipeline(folderName, jobName, serviceName);
+            HashedMap map = new HashedMap();
+            for (int i = 0; i < serviceName.length; i++) {
+                map.put("service" + (i + 1), serviceName[i]);
+            }
+            int buildNumber = jenkinsRepository.startBuildInFolder(folderName, jobName, map);
+            log.info("Successfully started build #{} for job: {}", buildNumber, jobName);
+            return buildNumber;
+        } catch (Exception e) {
+            log.error("Failed to start build for job: {}", jobName, e);
+            throw new JenkinsException("Failed to start build: " + jobName, e);
         }
     }
 
@@ -104,7 +126,39 @@ public class JenkinsServiceImpl implements JenkinsService {
         return emitter;
     }
 
+    @Override
+    public SseEmitter streamLogInFolder(String folderName, String jobName, int buildNumber) throws IOException, InterruptedException {
 
+        SseEmitter emitter = new SseEmitter(1800000L);
+        executor.execute(() -> {
+            try {
+                Build build = jenkinsRepository.getBuildInFolder(folderName, jobName, buildNumber);
+                int lastReadPosition = 0;
+
+                while (true) {
+                    String newLogs = getNewLogs(build, lastReadPosition);
+                    if (!newLogs.isEmpty()) {
+                        emitter.send(SseEmitter.event().data(newLogs));
+                        lastReadPosition += newLogs.length();
+                    }
+                    if (!build.details().isBuilding()) {
+                        break; // Exit loop if build is complete
+                    }
+                    Thread.sleep(1000);
+                }
+                // Send remaining logs and complete the emitter
+                String remainingLogs = getNewLogs(build, lastReadPosition);
+                if (!remainingLogs.isEmpty()) {
+                    emitter.send(SseEmitter.event().data(remainingLogs));
+                }
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+        return emitter;
+
+    }
 
 
     private String getNewLogs(Build build, int lastReadPosition) throws IOException {
@@ -224,11 +278,25 @@ public class JenkinsServiceImpl implements JenkinsService {
     }
 
     @Override
-    public void updateJobPipeline(String folderName, String jobName, String serviceName) throws JenkinsException {
+    public void updateJobPipeline(String folderName, String jobName, String[] serviceName) throws JenkinsException {
 
         try {
             jenkinsRepository.updateJobPipeline(folderName,jobName,serviceName);
             log.info("Successfully updated pipeline configuration with new services");
+        } catch (JenkinsRepository.JenkinsException e) {
+            log.error("Failed to update pipeline configuration", e);
+        }
+
+    }
+
+    @Override
+    public void updateJobDependency(String folderName, String jobName, String[] dependency) throws JenkinsException {
+
+        try {
+            jenkinsRepository.updateJobPipelineDependencies(folderName,jobName,dependency);
+
+            log.info("Successfully updated the dependency configuration with new services");
+
         } catch (JenkinsRepository.JenkinsException e) {
             log.error("Failed to update pipeline configuration", e);
         }
@@ -248,6 +316,38 @@ public class JenkinsServiceImpl implements JenkinsService {
         }
 
 
+    }
+
+    @Override
+    public List<BuildInfo> getBuildsInfoInFolder(String folderName, String jobName) throws IOException, InterruptedException {
+
+        log.info("Retrieving build information for job: {}", jobName);
+        log.info("Retrieving build information for folder: {}", folderName);
+
+
+        try {
+            List<BuildInfo> buildInfoList = jenkinsRepository.getBuildsInfoInFolder(folderName, jobName);
+            log.info("Successfully retrieved build information for job: {}", jobName);
+            return buildInfoList;
+        } catch (Exception e) {
+            log.error("Failed to retrieve build information for job: {}", jobName, e);
+            throw new JenkinsException("Failed to retrieve build information for job: " + jobName, e);
+        }
+    }
+
+    @Override
+    public void deleteService(String namespace) {
+        try {
+            // Update the pipeline for deletion
+            jenkinsRepository.updateForDelete("delete-service-pipeline", namespace);
+
+            // Start the build for the delete-service-pipeline
+            int buildNumber = jenkinsRepository.startBuild("delete-service-pipeline");
+            log.info("Successfully started build #{} for delete-service-pipeline", buildNumber);
+        } catch (Exception e) {
+            log.error("Failed to delete service: {}", namespace, e);
+            throw new JenkinsException("Failed to delete service: " + namespace, e);
+        }
     }
 
 
@@ -316,7 +416,7 @@ public class JenkinsServiceImpl implements JenkinsService {
 
         String randomDomain = generateRandomDomain(dbName);
 
-        subDomainNameService.createSubdomain(randomDomain, "34.143.215.235");
+        subDomainNameService.createSubdomain(randomDomain, "35.187.253.47");
 
         String domain = randomDomain + ".psa-khmer.world";
 
@@ -455,6 +555,7 @@ public class JenkinsServiceImpl implements JenkinsService {
                         "        INVENTORY_FILE = 'inventory/inventory.ini'\n" +
                         "        PLAYBOOK_FILE = 'playbooks/deploy-with-k8s.yml'\n" +
                         "        HELM_FILE = 'playbooks/setup-helm.yml'\n" +
+                        "        ARGO = 'playbooks/synx-argocd.yml'\n" +
                         "        APP_NAME = '%s'\n" +
                         "        FILE_Path = 'deployments/${APP_NAME}'\n" +
                         "        IMAGE = \"${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}\"\n" +
@@ -557,6 +658,16 @@ public class JenkinsServiceImpl implements JenkinsService {
                         "                    DOCKER_IMAGE_TAG,\n" +
                         "                    DOMAIN_NAME,\n" +
                         "                    GIT_REPO_URL\n" +
+                        "                )\n" +
+                        "            }\n" +
+                        "        }\n" +
+                        "        stage('sync helm with argocd') {\n" +
+                        "            steps {\n" +
+                        "                syncArgoCD(\n" +
+                        "                    INVENTORY_FILE,\n" +
+                        "                    ARGO,\n" +
+                        "                    APP_NAME,\n" +
+                        "                    DOCKER_IMAGE_TAG,\n" +
                         "                )\n" +
                         "            }\n" +
                         "        }\n" +

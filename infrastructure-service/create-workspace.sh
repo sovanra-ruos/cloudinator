@@ -4,9 +4,9 @@
 folder_name=$1
 
 # Hardcoded values
-JENKINS_URL="http://34.124.129.117:8080"
+JENKINS_URL="http://34.142.187.195:8080"
 JENKINS_USER="asura"
-JENKINS_API_TOKEN="11281f0b5bbf6654c4a2f2c31897134406"
+JENKINS_API_TOKEN="11cae77a9e032f7f2ebd9b82e75aeb087e"
 
 # Function to create Jenkins job
 create_jenkins_job() {
@@ -21,7 +21,7 @@ create_jenkins_job() {
 pipeline {
     agent any
     parameters {
-        string(name: 'SERVICES', defaultValue: 'config-server,eureka-server', description: 'Comma-separated list of services to deploy in order')
+        string(name: 'SERVICES', defaultValue: '', description: 'Comma-separated list of services to deploy in order')
     }
     stages {
         stage('Deploy Microservices') {

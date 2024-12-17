@@ -30,6 +30,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 @Slf4j
@@ -61,6 +62,28 @@ public class JenkinsRepository {
         return getBuildNumberFromQueue(queueReference);
     }
 
+    public int startBuildInFolder(String folderName, String jobName, Map<String, String> params) throws IOException, InterruptedException {
+        String jobPath = String.format("%s/%s", folderName, jobName);
+        JobWithDetails job = jenkins.getJob(jobPath);
+        if (job == null) {
+            throw new IOException("Job not found: " + jobPath);
+        }
+
+        log.info("param for build job: " + params);
+        log.info("Starting build for job: " + job);
+        log.info("Starting build for job: " + jobPath);
+        QueueReference queueReference;
+        try {
+            queueReference = job.build(params);
+        } catch (HttpResponseException e) {
+            log.error("Failed to start build for job: " + jobPath, e);
+            log.error("HTTP Response: " + e.getStatusCode() + " - " + e.getMessage());
+            throw e;
+        }
+
+        return getBuildNumberFromQueue(queueReference);
+    }
+
     private int getBuildNumberFromQueue(QueueReference queueReference) throws IOException, InterruptedException {
         QueueItem queueItem = jenkins.getQueueItem(queueReference);
         while (queueItem.getExecutable() == null) {
@@ -72,6 +95,15 @@ public class JenkinsRepository {
 
     public Build getBuild(String jobName, int buildNumber) throws IOException {
         JobWithDetails job = jenkins.getJob(jobName);
+        return job.getBuildByNumber(buildNumber);
+    }
+
+    public Build getBuildInFolder(String folderName, String jobName, int buildNumber) throws IOException {
+        String jobPath = String.format("%s/%s", folderName, jobName);
+        JobWithDetails job = jenkins.getJob(jobPath);
+        if (job == null) {
+            throw new IOException("Job not found: " + jobPath);
+        }
         return job.getBuildByNumber(buildNumber);
     }
 
@@ -131,6 +163,25 @@ public class JenkinsRepository {
         return buildInfos;
     }
 
+    public List<BuildInfo> getBuildsInfoInFolder(String folderName, String jobName) throws IOException {
+        String jobPath = String.format("%s/%s", folderName, jobName);
+        log.info("Job path: " + jobPath);
+
+        JobWithDetails job = jenkins.getJob(jobPath);
+        if (job == null) {
+            throw new IOException("Job not found: " + jobPath);
+        }
+
+        List<BuildInfo> buildInfos = new ArrayList<>();
+        for (Build build : job.getBuilds()) {
+            BuildWithDetails buildDetails = build.details();
+            String status = buildDetails.getResult() != null ? buildDetails.getResult().toString() : "BUILDING";
+            buildInfos.add(new BuildInfo(build.getNumber(), status));
+        }
+
+        return buildInfos;
+    }
+
     public PipelineInfo getPipelineInfo(String jobName) throws IOException {
         JobWithDetails jobDetails = jenkins.getJob(jobName);
 
@@ -170,7 +221,64 @@ public class JenkinsRepository {
         return "";
     }
 
-    public void updateJobPipeline(String folderName, String jobName, String serviceName) throws JenkinsException {
+    public void updateForDelete(String jobName, String namespace) throws JenkinsException {
+        try {
+            // Get the current job configuration XML
+            String configXml = client.get(String.format("/job/%s/config.xml", jobName));
+
+            log.info("Original XML: " + configXml);
+
+            // Parse the existing configuration
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new ByteArrayInputStream(configXml.getBytes()));
+
+            // Find the 'script' section within the configuration
+            NodeList scriptNodes = document.getElementsByTagName("script");
+            if (scriptNodes.getLength() > 0) {
+                Element scriptElement = (Element) scriptNodes.item(0);
+                String scriptContent = scriptElement.getTextContent();
+
+                // Override the NAMESPACE value
+                String namespacePattern = "NAMESPACE = '";
+                int namespaceIndex = scriptContent.indexOf(namespacePattern);
+                if (namespaceIndex != -1) {
+                    int startQuote = namespaceIndex + namespacePattern.length();
+                    int endQuote = scriptContent.indexOf("'", startQuote);
+
+                    if (startQuote != -1 && endQuote != -1) {
+                        String updatedScriptContent = scriptContent.substring(0, startQuote) +
+                                namespace + scriptContent.substring(endQuote);
+
+                        scriptElement.setTextContent(updatedScriptContent);
+
+                        log.info("Updated NAMESPACE value: " + namespace);
+                    }
+                }
+            }
+
+            // Convert the modified document back to string
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(document), new StreamResult(writer));
+            String updatedConfig = writer.toString();
+
+            log.info("Updated XML: " + updatedConfig);
+
+            // Update the job configuration
+            client.post_xml(String.format("/job/%s/config.xml", jobName), updatedConfig);
+
+        } catch (Exception e) {
+            throw new JenkinsException("Failed to update pipeline configuration: " + e.getMessage(), e);
+        }
+    }
+
+    public void updateJobPipeline(String folderName, String jobName, String[] serviceNames) throws JenkinsException {
+
+        log.info("Service names: " + Arrays.toString(serviceNames));
+        log.info("Folder name: " + folderName);
+
         try {
             // Get the current job configuration XML
             String jobPath = String.format("%s/job/%s", folderName, jobName);
@@ -196,27 +304,73 @@ public class JenkinsRepository {
                     int endQuote = scriptContent.indexOf("'", startQuote + 1);
 
                     if (startQuote != -1 && endQuote != -1) {
-                        String currentServices = scriptContent.substring(startQuote + 1, endQuote);
-                        String[] servicesList = currentServices.split(",");
+                        // Join the array of service names into a comma-separated string
+                        String updatedServices = String.join(",", serviceNames);
 
-                        // Check if the new service is already in the list
-                        boolean serviceExists = Arrays.asList(servicesList).contains(serviceName);
+                        // Replace the old services list with the updated one
+                        String updatedScriptContent = scriptContent.substring(0, startQuote + 1) +
+                                updatedServices + scriptContent.substring(endQuote);
 
-                        if (!serviceExists) {
-                            // Append the new service
-                            String updatedServices = currentServices.isEmpty() ?
-                                    serviceName : currentServices + "," + serviceName;
+                        scriptElement.setTextContent(updatedScriptContent);
 
-                            // Replace the old services list with the updated one
-                            String updatedScriptContent = scriptContent.substring(0, startQuote + 1) +
-                                    updatedServices + scriptContent.substring(endQuote);
+                        log.info("Updated services list: " + updatedServices);
+                    }
+                }
+            }
 
-                            scriptElement.setTextContent(updatedScriptContent);
+            // Convert the modified document back to string
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(document), new StreamResult(writer));
+            String updatedConfig = writer.toString();
 
-                            log.info("Updated services list: " + updatedServices);
-                        } else {
-                            log.info("Service already exists in the list: " + serviceName);
-                        }
+            log.info("Updated XML: " + updatedConfig);
+
+            // Update the job configuration
+            client.post_xml(String.format("/job/%s/config.xml", jobPath), updatedConfig);
+
+        } catch (Exception e) {
+            throw new JenkinsException("Failed to update pipeline configuration: " + e.getMessage(), e);
+        }
+    }
+
+    public void updateJobPipelineDependencies(String folderName, String jobName, String[] dependencyServices) throws JenkinsException {
+        try {
+            // Get the current job configuration XML
+            String jobPath = String.format("%s/job/%s", folderName, jobName);
+            String configXml = client.get(String.format("/job/%s/config.xml", jobPath));
+
+            log.info("Original XML: " + configXml);
+
+            // Parse the existing configuration
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new ByteArrayInputStream(configXml.getBytes()));
+
+            // Find the 'parameters' section within the script
+            NodeList scriptNodes = document.getElementsByTagName("script");
+            if (scriptNodes.getLength() > 0) {
+                Element scriptElement = (Element) scriptNodes.item(0);
+                String scriptContent = scriptElement.getTextContent();
+
+                // Parse the script content to find the DEPENDENCIES parameter
+                int dependenciesIndex = scriptContent.indexOf("DEPENDENCIES = [");
+                if (dependenciesIndex != -1) {
+                    int startBracket = scriptContent.indexOf("[", dependenciesIndex);
+                    int endBracket = scriptContent.indexOf("]", startBracket);
+
+                    if (startBracket != -1 && endBracket != -1) {
+                        // Join the array of dependency services into a comma-separated string
+                        String updatedDependencies = String.join(",", dependencyServices);
+
+                        // Replace the old dependencies list with the updated one
+                        String updatedScriptContent = scriptContent.substring(0, startBracket + 1) +
+                                updatedDependencies + scriptContent.substring(endBracket);
+
+                        scriptElement.setTextContent(updatedScriptContent);
+
+                        log.info("Updated dependencies list: " + updatedDependencies);
                     }
                 }
             }

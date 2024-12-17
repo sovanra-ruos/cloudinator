@@ -32,6 +32,17 @@ public interface JenkinsService {
     int startMonolithicBuild(String name) throws JenkinsException;
 
     /**
+     * Starts a build in a folder
+     *
+     * @param folderName The name of the folder
+     * @param jobName    The name of the job
+     * @param serviceName The name of the service
+     * @return The build number
+     * @throws JenkinsException if build start fails
+     */
+    int StartBuildJobInFolder(String folderName, String jobName,String[] serviceName) throws JenkinsException;
+
+    /**
      * Streams build logs to Kafka
      *
      * @param jobName     The name of the job
@@ -49,6 +60,18 @@ public interface JenkinsService {
      * @throws JenkinsException if streaming fails
      */
     SseEmitter streamLog(String jobName, int buildNumber) throws IOException ,InterruptedException;
+
+
+    /**
+     * Streams build logs via SSE
+     *
+     * @param folderName     The name of the folder
+     * @param jobName     The name of the job
+     * @param buildNumber The build number
+     * @return SseEmitter for streaming
+     * @throws JenkinsException if streaming fails
+     */
+    SseEmitter streamLogInFolder(String folderName, String jobName, int buildNumber) throws IOException ,InterruptedException;
 
     /**
      * Gets the build status
@@ -124,8 +147,10 @@ public interface JenkinsService {
      * @param serviceName   The new pipeline configuration
      * @throws JenkinsException if updating the job pipeline fails
      */
-    void updateJobPipeline(String folderName, String jobName, String serviceName) throws JenkinsException;
+    void updateJobPipeline(String folderName, String jobName, String[] serviceName) throws JenkinsException;
 
+
+    void updateJobDependency(String folderName, String jobName, String[] dependency) throws JenkinsException;
 
     /**
      * Gets all the jobs
@@ -133,5 +158,15 @@ public interface JenkinsService {
      * @throws JenkinsException
      */
     List<BuildInfo> getBuildsInfo(String jobName) throws IOException,InterruptedException;
+
+
+    /**
+     * Gets all the jobs in a folder
+     * @return
+     * @throws JenkinsException
+     */
+    List<BuildInfo> getBuildsInfoInFolder(String folderName,String jobName) throws IOException,InterruptedException;
+
+    void deleteService(String namespace);
 
 }
