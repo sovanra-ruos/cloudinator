@@ -265,6 +265,30 @@ public class JenkinsServiceImpl implements JenkinsService {
     @Override
     public void deleteFolder(String folderName) throws JenkinsException {
 
+        try {
+            // Execute the shell script with the folder name as a parameter
+            ProcessBuilder processBuilder = new ProcessBuilder("./infrastructure-service/delete_workspace.sh", folderName);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+            // Read the output from the script
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info(line);
+                }
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new IOException("Shell script execution failed with exit code " + exitCode);
+            }
+
+        } catch (IOException | InterruptedException e) {
+            log.error("Failed to create folder and execute script: {}", folderName, e);
+            throw new JenkinsException("Failed to create folder and execute script: " + folderName, e);
+        }
+
     }
 
     @Override
@@ -336,10 +360,10 @@ public class JenkinsServiceImpl implements JenkinsService {
     }
 
     @Override
-    public void deleteService(String namespace) {
+    public void deleteService(String namespace,Integer count) {
         try {
             // Update the pipeline for deletion
-            jenkinsRepository.updateForDelete("delete-service-pipeline", namespace);
+            jenkinsRepository.updateForDelete("delete-service-pipeline", namespace,count);
 
             // Start the build for the delete-service-pipeline
             int buildNumber = jenkinsRepository.startBuild("delete-service-pipeline");
@@ -348,6 +372,35 @@ public class JenkinsServiceImpl implements JenkinsService {
             log.error("Failed to delete service: {}", namespace, e);
             throw new JenkinsException("Failed to delete service: " + namespace, e);
         }
+    }
+
+    @Override
+    public void rollbackService(String name, Integer tag) {
+
+        try {
+            // Update the pipeline for rollback
+            jenkinsRepository.rollbackVersion("rollback-service-pipeline", name, tag);
+            // Start the build for the rollback-service-pipeline
+            int buildNumber = jenkinsRepository.startBuild("rollback-service-pipeline");
+            log.info("Successfully started build #{} for rollback-service-pipeline", buildNumber);
+        } catch (Exception e) {
+            log.error("Failed to rollback service: {}", name, e);
+            throw new JenkinsException("Failed to rollback service: " + name, e);
+        }
+
+    }
+
+    @Override
+    public void deleteJobInFolder(String folderName, String jobName) throws JenkinsException {
+
+        try {
+            jenkinsRepository.deleteJobInFolder(folderName, jobName);
+            log.info("Successfully deleted job: {}", jobName);
+        } catch (Exception e) {
+            log.error("Failed to delete job: {}", jobName, e);
+            throw new JenkinsException("Failed to delete job: " + jobName, e);
+        }
+
     }
 
 
@@ -522,12 +575,12 @@ public class JenkinsServiceImpl implements JenkinsService {
 
 
     private String createMonolithicPipeline(String name, String gitUrl, String branch, String token, String subdomain) {
-        String containerName = name + "-app";
+        String containerName = name;
 
         // Debug statement to check the value of subdomain
         System.out.println("Subdomain: " + subdomain);
 
-        String domain = subdomain.toLowerCase().replace(".", "-") + ".psa-khmer.world";
+        String domain = subdomain.toLowerCase().replace(".", "-") + ".cloudinator.cloud";
 
         // Debug statement to check the value of domain
         System.out.println("Domain: " + domain);
@@ -555,7 +608,6 @@ public class JenkinsServiceImpl implements JenkinsService {
                         "        INVENTORY_FILE = 'inventory/inventory.ini'\n" +
                         "        PLAYBOOK_FILE = 'playbooks/deploy-with-k8s.yml'\n" +
                         "        HELM_FILE = 'playbooks/setup-helm.yml'\n" +
-                        "        ARGO = 'playbooks/synx-argocd.yml'\n" +
                         "        APP_NAME = '%s'\n" +
                         "        FILE_Path = 'deployments/${APP_NAME}'\n" +
                         "        IMAGE = \"${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}\"\n" +
@@ -661,22 +713,17 @@ public class JenkinsServiceImpl implements JenkinsService {
                         "                )\n" +
                         "            }\n" +
                         "        }\n" +
-                        "        stage('sync helm with argocd') {\n" +
-                        "            steps {\n" +
-                        "                syncArgoCD(\n" +
-                        "                    INVENTORY_FILE,\n" +
-                        "                    ARGO,\n" +
-                        "                    APP_NAME,\n" +
-                        "                    DOCKER_IMAGE_TAG,\n" +
-                        "                )\n" +
-                        "            }\n" +
-                        "        }\n" +
                         "        stage('Setup GitHub Webhook') {\n" +
                         "            steps {\n" +
                         "                script {\n" +
                         "                    createGitHubWebhook(env.GIT_REPO_URL, env.WEBHOOK_URL, env.GITHUB_TOKEN)\n" +
                         "                }\n" +
                         "            }\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "    post {\n" +
+                       "        always {\n" +
+                        "            cleanWs()\n" +
                         "        }\n" +
                         "    }\n" +
                         "}",

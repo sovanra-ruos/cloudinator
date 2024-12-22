@@ -136,6 +136,12 @@ public class JenkinsRepository {
         jenkins.deleteJob(jobName, true);
     }
 
+
+    public void deleteJobInFolder(String folderName, String jobName) throws IOException {
+        String jobPath = String.format("%s/%s", folderName, jobName);
+        jenkins.deleteJob(jobPath, true);
+    }
+
     public void disableJob(String jobName) throws IOException {
         jenkins.disableJob(jobName);
     }
@@ -221,7 +227,98 @@ public class JenkinsRepository {
         return "";
     }
 
-    public void updateForDelete(String jobName, String namespace) throws JenkinsException {
+    public void rollbackVersion(String jobName, String name, Integer tag) throws JenkinsException {
+
+        try {
+
+            String configXml = client.get(String.format("/job/%s/config.xml", jobName));
+
+            log.info("Original XML: " + configXml);
+
+            // Parse the existing configuration
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new ByteArrayInputStream(configXml.getBytes()));
+
+            // Find the 'script' section within the configuration
+            NodeList scriptNodes = document.getElementsByTagName("script");
+            if (scriptNodes.getLength() > 0) {
+                Element scriptElement = (Element) scriptNodes.item(0);
+                String scriptContent = scriptElement.getTextContent();
+
+                log.info("Original script content: " + scriptContent);
+
+                // Override the NAMESPACE value
+                String namespacePattern = "APP_NAME = '";
+                int namespaceIndex = scriptContent.indexOf(namespacePattern);
+                if (namespaceIndex != -1) {
+                    int startQuote = namespaceIndex + namespacePattern.length();
+                    int endQuote = scriptContent.indexOf("'", startQuote);
+
+                    if (startQuote != -1 && endQuote != -1) {
+                        String updatedScriptContent = scriptContent.substring(0, startQuote) +
+                                name + scriptContent.substring(endQuote);
+
+                        log.info("Updated script content: " + updatedScriptContent);
+
+                        scriptElement.setTextContent(updatedScriptContent);
+
+                        log.info("Updated APP_NAME value: " + name);
+                    } else {
+                        log.error("Failed to find the end quote for APP_NAME value.");
+                    }
+                } else {
+                    log.error("APP_NAME pattern not found in the script content.");
+                }
+
+                log.info("Script content before searching for ROLLBACK_TAG: " + scriptContent);
+
+                // Override the REPLICA_COUNT value
+                String replicaCountPattern = "ROLLBACK_TAG = '";
+                int replicaCountIndex = scriptContent.indexOf(replicaCountPattern);
+                if (replicaCountIndex != -1) {
+                    int startQuote = replicaCountIndex + replicaCountPattern.length();
+                    int endQuote = scriptContent.indexOf("'", startQuote);
+
+                    if (startQuote != -1 && endQuote != -1) {
+                        String updatedScriptContent = scriptContent.substring(0, startQuote) +
+                                tag + scriptContent.substring(endQuote);
+
+                        log.info("Updated script content: " + updatedScriptContent);
+
+                        scriptElement.setTextContent(updatedScriptContent);
+
+                        log.info("Updated TAG value: " + tag);
+                    } else {
+                        log.error("Failed to find the end quote for TAG value.");
+                    }
+                } else {
+                    log.error("TAG pattern not found in the script content.");
+                }
+            } else {
+                log.error("No script nodes found in the configuration.");
+            }
+
+            // Convert the modified document back to string
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(document), new StreamResult(writer));
+            String updatedConfig = writer.toString();
+
+            log.info("Updated XML: " + updatedConfig);
+
+            // Update the job configuration
+            client.post_xml(String.format("/job/%s/config.xml", jobName), updatedConfig);
+
+
+        }catch (Exception e){
+            throw new JenkinsException("Failed to rollback version: " + e.getMessage(), e);
+        }
+
+    }
+
+    public void updateForDelete(String jobName, String namespace, Integer count) throws JenkinsException {
         try {
             // Get the current job configuration XML
             String configXml = client.get(String.format("/job/%s/config.xml", jobName));
@@ -239,6 +336,8 @@ public class JenkinsRepository {
                 Element scriptElement = (Element) scriptNodes.item(0);
                 String scriptContent = scriptElement.getTextContent();
 
+                log.info("Original script content: " + scriptContent);
+
                 // Override the NAMESPACE value
                 String namespacePattern = "NAMESPACE = '";
                 int namespaceIndex = scriptContent.indexOf(namespacePattern);
@@ -250,11 +349,45 @@ public class JenkinsRepository {
                         String updatedScriptContent = scriptContent.substring(0, startQuote) +
                                 namespace + scriptContent.substring(endQuote);
 
+                        log.info("Updated script content: " + updatedScriptContent);
+
                         scriptElement.setTextContent(updatedScriptContent);
 
                         log.info("Updated NAMESPACE value: " + namespace);
+                    } else {
+                        log.error("Failed to find the end quote for NAMESPACE value.");
                     }
+                } else {
+                    log.error("NAMESPACE pattern not found in the script content.");
                 }
+
+                // Log the script content before searching for REPLICA_COUNT
+                log.info("Script content before searching for REPLICA_COUNT: " + scriptContent);
+
+                // Override the REPLICA_COUNT value
+                String replicaCountPattern = "REPLICA_COUNT = '";
+                int replicaCountIndex = scriptContent.indexOf(replicaCountPattern);
+                if (replicaCountIndex != -1) {
+                    int startQuote = replicaCountIndex + replicaCountPattern.length();
+                    int endQuote = scriptContent.indexOf("'", startQuote);
+
+                    if (startQuote != -1 && endQuote != -1) {
+                        String updatedScriptContent = scriptContent.substring(0, startQuote) +
+                                count + scriptContent.substring(endQuote);
+
+                        log.info("Updated script content: " + updatedScriptContent);
+
+                        scriptElement.setTextContent(updatedScriptContent);
+
+                        log.info("Updated REPLICA_COUNT value: " + count);
+                    } else {
+                        log.error("Failed to find the end quote for REPLICA_COUNT value.");
+                    }
+                } else {
+                    log.error("REPLICA_COUNT pattern not found in the script content.");
+                }
+            } else {
+                log.error("No script nodes found in the configuration.");
             }
 
             // Convert the modified document back to string

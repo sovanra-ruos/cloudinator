@@ -43,6 +43,17 @@ public class JenkinsController {
         }
     }
 
+    @PostMapping("/rollback-service")
+    public ResponseEntity<String> rollbackService(@RequestParam String serviceName, @RequestParam Integer tag) {
+
+        try {
+            jenkinsService.rollbackService(serviceName, tag);
+            return ResponseEntity.ok("Service rollback successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to rollback service");
+        }
+    }
+
     @PostMapping("/start-build/folder")
     public ResponseEntity<String> startBuildInFolder(@RequestParam String folderName, @RequestParam String jobName, @RequestParam String[] serviceName) {
 
@@ -85,6 +96,16 @@ public class JenkinsController {
             return ResponseEntity.ok("Folder created successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to create folder");
+        }
+    }
+
+    @PostMapping("/delete-folder")
+    public ResponseEntity<String> deleteFolder(@RequestParam String folderName) {
+        try {
+            jenkinsService.deleteFolder(folderName);
+            return ResponseEntity.ok("Folder deleted successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to delete folder");
         }
     }
 
@@ -172,13 +193,23 @@ public class JenkinsController {
         }
     }
 
-    @PostMapping("/delete-service/{namespace}")
-    public ResponseEntity<String> deleteService(@PathVariable String namespace) {
+    @PostMapping("/delete-service")
+    public ResponseEntity<String> deleteService(@RequestParam String namespace, @RequestParam Integer count) {
         try {
-            jenkinsService.deleteService(namespace);
+            jenkinsService.deleteService(namespace, count);
             return ResponseEntity.ok("Service deleted successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to delete service");
+        }
+    }
+
+    @PostMapping("/delete-job-in-folder")
+    public ResponseEntity<String> deleteJobInFolder(@RequestParam String folderName, @RequestParam String jobName) {
+        try {
+            jenkinsService.deleteJobInFolder(folderName, jobName);
+            return ResponseEntity.ok("Job deleted successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to delete job");
         }
     }
 

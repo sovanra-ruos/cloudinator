@@ -17,7 +17,7 @@ spring:
           ms: 100
 
   datasource:
-    url: jdbc:postgresql://34.142.187.195:3242/fastapi
+    url: jdbc:postgresql://34.142.187.195:3242/testingdb
     username: springdb
     password: ITE2@2024
     driver-class-name: org.postgresql.Driver
@@ -44,3 +44,12 @@ name:
     api:
       token: 2654afc89abd16d01213a0fecadee55cded0ef7b
       username: vannraruos@gmail.com
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://34.87.156.153:8761/eureka/

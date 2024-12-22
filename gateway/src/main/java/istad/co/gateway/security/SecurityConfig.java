@@ -78,7 +78,7 @@ public class SecurityConfig {
 //        final String DEFAULT_LOGOUT_SUCCESS_URL = "/";
 //        URI logoutSuccessUrl = URI.create(DEFAULT_LOGOUT_SUCCESS_URL);
 //        redirectServerLogoutSuccessHandler.setLogoutSuccessUrl(logoutSuccessUrl);
-        String authorizationServerLogoutUrl = "http://34.87.156.153:8080/logout";
+        String authorizationServerLogoutUrl = "http://localhost:8080/logout";
         redirectServerLogoutSuccessHandler.setLogoutSuccessUrl(URI.create(authorizationServerLogoutUrl));
 
 

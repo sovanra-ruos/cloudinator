@@ -7,9 +7,9 @@ spring:
       client:
         provider:
           devops:
-            issuer-uri: http://localhost:8080
-            authorization-uri: http://localhost:8080/oauth2/authorize
-            token-uri: http://localhost:8080/oauth2/token
+            issuer-uri: http://register.cloudinator.cloud
+            authorization-uri: http://register.cloudinator.cloud/oauth2/authorize
+            token-uri: http://register.cloudinator.cloud/oauth2/token
         registration:
           devops:
             provider: devops
@@ -18,7 +18,7 @@ spring:
             authorization-grant-type:
               - authorization_code
             scope: openid, profile
-            redirect-uri: http://localhost:8081/login/oauth2/code/devops
+            redirect-uri: https://dynamic.psa-khmer.world/login/oauth2/code/devops
             client-authentication-method:
               - client_secret_post
               - client_secret_basic
@@ -34,21 +34,28 @@ spring:
         - SaveSession
       routes:
         - id: identity
-          uri: http://localhost:8080
+          uri: http://register.cloudinator.cloud
           predicates:
             - Path=/identity/**
           filters:
             - TokenRelay=
             - RewritePath=/identity/(?<segment>.*),/$\{segment}
         - id: project-service
-          uri: http://localhost:8087
+          uri: http://34.87.156.153:8087
           predicates:
             - Path=/project/**
           filters:
             - TokenRelay=
             - RewritePath=/project/(?<segment>.*),/$\{segment}
+        - id: media
+          uri: http://34.87.156.153:8095
+          predicates:
+            - Path=/media/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/media/(?<segment>.*),/$\{segment}
         - id: webapp-bff
-          uri: http://localhost:3001
+          uri: http://34.87.156.153:3000
           predicates:
             - Path=/**
     loadbalancer:
@@ -88,6 +95,15 @@ client-permit-matchers: >
   /error/**,
   /identity/**,
   /project/**
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://34.87.156.153:8761/eureka/
 
 
 

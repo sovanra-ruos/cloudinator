@@ -161,12 +161,26 @@ public interface JenkinsService {
 
 
     /**
-     * Gets all the jobs in a folder
-     * @return
-     * @throws JenkinsException
-     */
+        * Gets all the jobs in a folder
+        * @return
+        * @throws JenkinsException
+        */
     List<BuildInfo> getBuildsInfoInFolder(String folderName,String jobName) throws IOException,InterruptedException;
 
-    void deleteService(String namespace);
+    /**
+        * Deletes a service
+        * @param namespace
+        * @param count
+        */
+    void deleteService(String namespace,Integer count);
+
+    /**
+     * Rollback a service
+     * @param name
+     * @param tag
+     */
+    void rollbackService(String name,Integer tag);
+
+    void deleteJobInFolder(String folderName, String jobName) throws JenkinsException;
 
 }
